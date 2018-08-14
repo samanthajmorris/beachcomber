@@ -7,8 +7,11 @@ BeachComber is an analytic automation tool which compares file behavior logs aga
 
 This repository contains:
 o	-SIGMA rule specification in this document
+
 o	-Repository for sigma signatures in the sysmon-rules subfolder
+
 o	-A tool which checks xml logs against the SIGMA rules
+
 
 # Getting Started
 
@@ -33,6 +36,8 @@ https://github.com/Neo23x0/sigma
 Sigma is a generic and open signature format that allows you to describe relevant log events in a straight forward manner. The rule format is very flexible, easy to write and applicable to any type of log file. The main purpose of this project is to provide a structured form in which researchers or analysts can describe their once developed detection methods and make them shareable with others.
 
 Note: For BeachComber, only the title and detection section is required. BeachComber does not yet have the logic to identify different log sources, therefore it will not identify if you are running Sysmon SIGAM signatures against a log that is not a Sysmon event log.
+
+**BeachComber currently is not compatible with the indicator "Suspicious RDP Redirecft Using TSCON" due the formatting, the program cannot find a condition section. Also not compatible for indicators "Executable used by PlugX in Uncommon Location" and "Mimikatz In-Memory" due to complicated conditions which the logic has not been worked out.
 
 The rules consist of a few required sections and several optional ones.
 
