@@ -1,0 +1,1955 @@
+---
+title: Windows Shell Spawning Suspicious Program
+status: experimental
+description: Detects a suspicious child process of a Windows shell
+references:
+    - https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+author: Florian Roth
+date: 20018/04/06
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+            - '*\mshta.exe'
+            - '*\powershell.exe'
+            - '*\cmd.exe'
+            - '*\rundll32.exe'
+            - '*\cscript.exe'
+            - '*\wscript.exe'
+            - '*\wmiprvse.exe'
+        Image:
+            - '*\schtasks.exe'
+            - '*\nslookup.exe'
+            - '*\certutil.exe'
+            - '*\bitsadmin.exe'
+            - '*\mshta.exe'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Administrative scripts
+level: medium
+
+...
+---
+title: Suspicious WMI execution
+status: experimental
+description: Detects WMI executing suspicious commands
+references:
+    - https://digital-forensics.sans.org/blog/2010/06/04/wmic-draft/
+    - https://www.hybrid-analysis.com/sample/4be06ecd234e2110bd615649fe4a6fa95403979acf889d7e45a78985eb50acf9?environmentId=1
+    - https://blog.malwarebytes.com/threat-analysis/2016/04/rokku-ransomware/
+author: Michael Haag, Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\wmic.exe'
+        CommandLine:
+            - '*/NODE:*process call create *'
+            - '* path AntiVirusProduct get *'
+            - '* path FirewallProduct get *'
+            - '* shadowcopy delete *'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Will need to be tuned
+    - If using Splunk, I recommend | stats count by Computer,CommandLine following for easy hunting by Computer/CommandLine.
+level: medium
+...
+---
+title: Net.exe Execution
+status: experimental
+description: Detects execution of Net.exe, whether suspicious or benign.
+references:
+    - https://pentest.blog/windows-privilege-escalation-methods-for-pentesters/
+author: Michael Haag, Mark Woan (improvements)
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\net.exe'
+            - '*\net1.exe'
+        CommandLine:
+            - '* group*'
+            - '* localgroup*'
+            - '* user*'
+            - '* view*'
+            - '* share'
+            - '* accounts*'
+            - '* use*'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Will need to be tuned. If using Splunk, I recommend | stats count by Computer,CommandLine following the search for easy hunting by computer/CommandLine.
+level: medium
+...
+---
+title: PowerShell Download from URL
+status: experimental
+description: Detetcs a Powershell process that contains download commands in its command line string
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: '*\powershell.exe'
+        CommandLine: 
+            - '*new-object system.net.webclient).downloadstring(*'
+            - '*new-object system.net.webclient).downloadfile(*'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: medium
+
+...
+---
+title: WScript or CScript Dropper
+status: experimental
+description: Detects wscript/cscript executions of scripts located in user directories
+author: Margaritis Dimitrios (idea), Florian Roth (rule)
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+        CommandLine:
+            - '* C:\Users\*.jse *'
+            - '* C:\Users\*.vbe *'
+            - '* C:\Users\*.js *'
+            - '* C:\Users\*.vba *'
+            - '* C:\Users\*.vbs *'
+            - '* C:\ProgramData\*.jse *'
+            - '* C:\ProgramData\*.vbe *'
+            - '* C:\ProgramData\*.js *'
+            - '* C:\ProgramData\*.vba *'
+            - '* C:\ProgramData\*.vbs *'
+    falsepositive:
+        ParentImage: '*\winzip*'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Winzip
+    - Other self-extractors
+level: high
+...
+---
+title: Exploit for CVE-2017-8759 
+description: Detects Winword starting uncommon sub process csc.exe as used in exploits for CVE-2017-8759
+references:
+  - https://www.hybrid-analysis.com/sample/0b4ef455e385b750d9f90749f1467eaf00e46e8d6c2885c260e1b78211a51684?environmentId=100
+  - https://www.reverse.it/sample/0b4ef455e385b750d9f90749f1467eaf00e46e8d6c2885c260e1b78211a51684?environmentId=100
+author: Florian Roth
+date: 15.09.2017
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\WINWORD.EXE'
+        Image: '*\csc.exe'
+    condition: selection
+falsepositives:
+    - Unknown
+level: critical
+...
+---
+title: Command Line Execution with suspicious URL and AppData Strings
+status: experimental
+description: Detects a suspicious command line execution that includes an URL and AppData string in the command line parameters as used by several droppers (js/vbs > powershell)
+references:
+    - 'https://www.hybrid-analysis.com/sample/3a1f01206684410dbe8f1900bbeaaa543adfcd07368ba646b499fa5274b9edf6?environmentId=100'
+    - 'https://www.hybrid-analysis.com/sample/f16c729aad5c74f19784a24257236a8bbe27f7cdc4a89806031ec7f1bebbd475?environmentId=100'
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine: 
+            - 'cmd.exe /c *http://*%AppData%'
+            - 'cmd.exe /c *https://*%AppData%'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - High
+level: medium
+...
+---
+title: Suspicious Driver Load from Temp
+description: Detetcs a driver load from a temporary directory
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 6
+        ImageLoaded: '*\Temp\*'
+    condition: selection
+falsepositives:
+    - there is a relevant set of false positives depending on applications in the envirnment 
+level: medium
+...
+---
+title: New RUN Key Pointing to Suspicious Folder
+status: experimental
+description: Detects suspicious new RUN key element pointing to an executable in a suspicious folder
+author: Florian Roth
+date: 2017/10/17
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 13
+        TargetObject: '\REGISTRY\MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\*'
+        Details: 
+          - 'C:\Windows\Temp\*'
+          - '*\AppData\*'
+          - 'C:\$Recycle.bin\*'
+          - 'C:\Temp\*'
+          - 'C:\Users\Public\*'
+          - 'C:\Users\Default\*'
+    condition: selection
+fields:
+    - Image
+falsepositives:
+    - Software with rare behaviour
+level: high
+...
+---
+title: Exploit for CVE-2017-0261
+status: experimental
+description: Detects Winword starting uncommon sub process FLTLDR.exe as used in exploits for CVE-2017-0261 and CVE-2017-0262 
+references:
+  - https://www.fireeye.com/blog/threat-research/2017/05/eps-processing-zero-days.html
+author: Florian Roth
+date: 2018/02/22
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\WINWORD.EXE'
+        Image: '*\FLTLDR.exe*'
+    condition: selection
+falsepositives:
+    - Several false positives identified, check for suspicious file names or locations (e.g. Temp folders)
+level: medium
+...
+---
+title: WMI Persistence - Script Event Consumer File Write
+status: experimental
+description: Detects file writes of WMI script event consumer
+references:
+    - https://www.eideon.com/2018-03-02-THL03-WMIBackdoors/
+author: Thomas Patzke
+date: 2018/03/07
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 11
+        Image: 'C:\WINDOWS\system32\wbem\scrcons.exe'
+    condition: selection
+falsepositives: 
+    - Unknown (data set is too small; further testing needed)
+level: high
+...
+---
+title: Office Macro Starts Cmd
+status: experimental
+description: Detects a Windows command line executable started from Microsoft Word or Excel 
+references:
+    - https://www.hybrid-analysis.com/sample/465aabe132ccb949e75b8ab9c5bda36d80cf2fd503d52b8bad54e295f28bbc21?environmentId=100
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: 
+            - '*\WINWORD.EXE'
+            - '*\EXCEL.EXE'
+        Image: '*\cmd.exe'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: high
+
+...
+---
+title: Execution in Non-Executable Folder
+status: experimental
+description: Detects a suspicious exection from an uncommon folder
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: 
+            - '*\$Recycle.bin'
+            - '*\Users\All Users\*'
+            - '*\Users\Default\*'
+            - '*\Users\Public\*'
+            - 'C:\Perflogs\*'
+            - '*\config\systemprofile\*'
+            - '*\Windows\Fonts\*'
+            - '*\Windows\IME\*'
+            - '*\Windows\addins\*'       
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Unknown
+level: high
+...
+---
+title: Java Running with Remote Debugging
+description: Detcts a JAVA process running with remote debugging allowing more than just localhost to connect
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine: '*transport=dt_socket,address=*'
+    exclusion:
+        - CommandLine: '*address=127.0.0.1*'
+        - CommandLine: '*address=localhost*'
+    condition: selection and not exclusion
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: medium
+...
+---
+title: Executable used by PlugX in Uncommon Location
+status: experimental
+description: Detects the execution of an executable that is typically used by PlugX for DLL side loading started from an uncommon location
+references:
+    - 'http://www.hexacorn.com/blog/2016/03/10/beyond-good-ol-run-key-part-36/'
+    - 'https://countuponsecurity.com/2017/06/07/threat-hunting-in-the-enterprise-with-appcompatprocessor/'
+author: Florian Roth
+date: 2017/06/12
+logsource:
+    product: windows
+    service: sysmon
+detection:
+
+    # CamMute
+    selection_cammute:
+        EventID: 1
+        Image: '*\CamMute.exe'
+    filter_cammute:
+        EventID: 1
+        Image: '*\Lenovo\Communication Utility\*'
+
+    # Chrome Frame Helper
+    selection_chrome_frame:
+        EventID: 1
+        Image: '*\chrome_frame_helper.exe'
+    filter_chrome_frame:
+        EventID: 1
+        Image: '*\Google\Chrome\application\*'    
+
+    # Microsoft Device Emulator
+    selection_devemu:
+        EventID: 1
+        Image: '*\dvcemumanager.exe'
+    filter_devemu:
+        EventID: 1
+        Image: '*\Microsoft Device Emulator\*'   
+
+    # Windows Media Player Gadget
+    selection_gadget:
+        EventID: 1
+        Image: '*\Gadget.exe'
+    filter_gadget:
+        EventID: 1
+        Image: '*\Windows Media Player\*'
+
+    # HTML Help Workshop
+    selection_hcc:
+        EventID: 1
+        Image: '*\hcc.exe'
+    filter_hcc:
+        EventID: 1
+        Image: '*\HTML Help Workshop\*'
+
+    # Hotkey Command Module for Intel Graphics Contollers
+    selection_hkcmd:
+        EventID: 1
+        Image: '*\hkcmd.exe'
+    filter_hkcmd:
+        EventID: 1
+        Image: 
+            - '*\System32\*'
+            - '*\SysNative\*'
+            - '*\SysWowo64\*'
+
+    # McAfee component
+    selection_mc:
+        EventID: 1
+        Image: '*\Mc.exe'
+    filter_mc:
+        EventID: 1
+        Image: 
+            - '*\Microsoft Visual Studio*'
+            - '*\Microsoft SDK*'
+            - '*\Windows Kit*'
+
+    # MsMpEng - Microsoft Malware Protection Engine
+    selection_msmpeng:
+        EventID: 1
+        Image: '*\MsMpEng.exe'
+    filter_msmpeng:
+        EventID: 1
+        Image: 
+            - '*\Microsoft Security Client\*'
+            - '*\Windows Defender\*'
+            - '*\AntiMalware\*'
+
+    # Microsoft Security Center
+    selection_msseces:
+        EventID: 1
+        Image: '*\msseces.exe'
+    filter_msseces:
+        EventID: 1
+        Image: '*\Microsoft Security Center\*'
+
+    # Microsoft Office 2003 OInfo
+    selection_oinfo:
+        EventID: 1
+        Image: '*\OInfoP11.exe'
+    filter_oinfo:
+        EventID: 1
+        Image: '*\Common Files\Microsoft Shared\*'      
+
+    # OLE View
+    selection_oleview:
+        EventID: 1
+        Image: '*\OleView.exe'
+    filter_oleview:
+        EventID: 1
+        Image: 
+            - '*\Microsoft Visual Studio*'
+            - '*\Microsoft SDK*'
+            - '*\Windows Kit*'   
+            - '*\Windows Resource Kit\*'
+
+    # RC
+    selection_rc:
+        EventID: 1
+        Image: '*\OleView.exe'
+    filter_rc:
+        EventID: 1
+        Image: 
+            - '*\Microsoft Visual Studio*'
+            - '*\Microsoft SDK*'
+            - '*\Windows Kit*'   
+            - '*\Windows Resource Kit\*'
+            - '*\Microsoft.NET\*'  
+
+    condition: ( selection_cammute and not filter_cammute ) or  
+                ( selection_chrome_frame and not filter_chrome_frame ) or
+                ( selection_devemu and not filter_devemu ) or
+                ( selection_gadget and not filter_gadget ) or 
+                ( selection_hcc and not filter_hcc ) or 
+                ( selection_hkcmd and not filter_hkcmd ) or 
+                ( selection_mc and not filter_mc ) or
+                ( selection_msmpeng and not filter_msmpeng ) or
+                ( selection_msseces and not filter_msseces ) or
+                ( selection_oinfo and not filter_oinfo ) or 
+                ( selection_oleview and not filter_oleview ) or 
+                ( selection_rc and not filter_rc ) 
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Unknown
+level: high
+
+
+...
+---
+title: QuarksPwDump Dump File
+status: experimental
+description: Detects a dump file written by QuarksPwDump password dumper
+references:
+    - https://jpcertcc.github.io/ToolAnalysisResultSheet/details/QuarksPWDump.htm
+author: Florian Roth
+date: 2018/02/10
+level: critical
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        # Sysmon: File Creation (ID 11)
+        EventID: 11
+        TargetFilename: '*\AppData\Local\Temp\SAM-*.dmp*'
+    condition: selection
+falsepositives:
+    - Unknown
+
+...
+---
+title: Password Dumper Remote Thread in LSASS 
+description: Detects password dumper activity by monitoring remote thread creation EventID 8 in combination with the lsass.exe process as TargetImage. The process in field Process is the malicious program. A single execution can lead to hundrets of events.
+author: Thomas Patzke
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 8
+        TargetImage: 'C:\Windows\System32\lsass.exe'
+        StartModule: null
+    condition: selection
+falsepositives:
+    - unknown
+level: high
+
+
+...
+---
+title: MSHTA Spawning Windows Shell
+status: experimental
+description: Detects a Windows command line executable started from MSHTA.
+references:
+    - https://www.trustedsec.com/july-2015/malicious-htas/
+author: Michael Haag
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\mshta.exe'
+        Image:
+            - '*\cmd.exe'
+            - '*\powershell.exe'
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+            - '*\sh.exe'
+            - '*\bash.exe'
+            - '*\reg.exe'
+            - '*\regsvr32.exe'
+            - '*\BITSADMIN*'
+    filter:
+        CommandLine:
+            - '*/HP/HP*'
+            - '*\HP\HP*'
+    condition: selection and not filter
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Printer software / driver installations
+level: high
+
+...
+---
+title: Sticky Key Like Backdoor Usage
+description: Detects the usage and installation of a backdoor that uses an option to register a malicious debugger for built-in tools that are accessible in the login screen
+references:
+    - https://blogs.technet.microsoft.com/jonathantrull/2016/10/03/detecting-sticky-key-backdoors/
+author: Florian Roth, @twjackomo
+date: 2018/03/15
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection_process:
+        EventID: 1
+        ParentImage:
+            - '*\winlogon.exe'
+        CommandLine:
+            - '*\cmd.exe sethc.exe *'
+            - '*\cmd.exe utilman.exe *'
+            - '*\cmd.exe osk.exe *'
+            - '*\cmd.exe Magnify.exe *'
+            - '*\cmd.exe Narrator.exe *'
+            - '*\cmd.exe DisplaySwitch.exe *'
+    selection_registry:
+        EventID: 13
+        TargetObject: 
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sethc.exe\Debugger'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\utilman.exe\Debugger'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\osk.exe\Debugger'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\Magnify.exe\Debugger'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\Narrator.exe\Debugger'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\DisplaySwitch.exe\Debugger'
+        EventType: 'SetValue'
+    condition: 1 of them
+falsepositives:
+    - Unlikely
+level: critical
+
+...
+---
+title: DNS ServerLevelPluginDll Install
+status: experimental
+description: Detects the installation of a plugin DLL via ServerLevelPluginDll parameter in Registry, which can be used to execute code in context of the DNS server (restart required)
+references:
+    - https://medium.com/@esnesenon/feature-not-bug-dnsadmin-to-dc-compromise-in-one-line-a0f779b8dc83
+date: 2017/05/08
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    dnsadmin:
+        EventID: 1
+        CommandLine: 'dnscmd.exe /config /serverlevelplugindll *'
+    dnsregmod:
+        EventID: 13
+        TargetObject: '*\services\DNS\Parameters\ServerLevelPluginDll'
+    condition: 1 of them
+fields:
+    - EventID
+    - CommandLine
+    - ParentCommandLine
+    - Image
+    - User
+    - TargetObject
+falsepositives:
+    - unknown
+level: high
+
+
+...
+---
+title: Execution in Webserver Root Folder
+status: experimental
+description: Detects a suspicious program execution in a web service root folder (filter out false positives)
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: 
+            - '*\wwwroot\*'
+            - '*\wmpub\*'
+            - '*\htdocs\*'          
+    filter:
+        Image: 
+            - '*bin\*'
+            - '*\Tools\*'
+            - '*\SMSComponent\*'
+        ParentImage:
+            - '*\services.exe'
+    condition: selection and not filter
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Various applications
+    - Tools that include ping or nslookup command invocations
+level: medium
+...
+---
+title: Suspicious Program Location with Network Connections
+status: experimental
+description: Detects programs with network connections running in suspicious files system locations
+references:
+    - https://docs.google.com/spreadsheets/d/17pSTDNpa0sf6pHeRhusvWG6rThciE8CsXTSlDUAZDyo
+author: Florian Roth
+date: 2017/03/19
+logsource:
+    product: windows
+    service: sysmon
+    description: 'Use the following config to generate the necessary Event ID 3 Network Connection events'
+detection:
+    selection:
+        EventID: 3
+        Image: 
+            - '*\ProgramData\*'
+            - '*\$Recycle.bin'
+            - '*\Users\All Users\*'
+            - '*\Users\Default\*'
+            - '*\Users\Public\*'
+            - 'C:\Perflogs\*'
+            - '*\config\systemprofile\*'
+            - '*\Windows\Fonts\*'
+            - '*\Windows\IME\*'
+            - '*\Windows\addins\*'
+    condition: selection
+falsepositives:
+    - unknown
+level: high...
+---
+title: System File Execution Location Anomaly
+status: experimental
+description: Detects a Windows program executable started in a suspicious folder
+references:
+    - https://twitter.com/GelosSnake/status/934900723426439170
+author: Florian Roth
+date: 2017/11/27
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\svchost.exe'
+            - '*\rundll32.exe'
+            - '*\services.exe'
+            - '*\powershell.exe'
+            - '*\regsvr32.exe'
+            - '*\spoolsv.exe'
+            - '*\lsass.exe'
+            - '*\smss.exe'
+            - '*\csrss.exe'
+            - '*\conhost.exe'
+    filter:
+        Image: 
+            - '*\System32\*'
+            - '*\SysWow64\*'
+    condition: selection and not filter
+falsepositives:
+    - Exotic software
+level: high
+
+...
+---
+title: Activity Related to NTDS.dit Domain Hash Retrieval
+status: experimental
+description: Detects suspicious commands that could be related to activity that uses volume shadow copy to steal and retrieve hashes from the NTDS.dit file remotely 
+author: Florian Roth, Michael Haag
+references:
+    - https://www.swordshield.com/2015/07/getting-hashes-from-ntds-dit-file/
+    - https://room362.com/post/2013/2013-06-10-volume-shadow-copy-ntdsdit-domain-hashes-remotely-part-1/
+    - https://www.trustwave.com/Resources/SpiderLabs-Blog/Tutorial-for-NTDS-goodness-(VSSADMIN,-WMIS,-NTDS-dit,-SYSTEM)/
+    - https://securingtomorrow.mcafee.com/mcafee-labs/new-teslacrypt-ransomware-arrives-via-spam/
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine:
+            # Ransomware
+            - 'vssadmin.exe Delete Shadows'
+            # Hacking 
+            - 'vssadmin create shadow /for=C:'
+            - 'copy \\?\GLOBALROOT\Device\*\windows\ntds\ntds.dit'
+            - 'copy \\?\GLOBALROOT\Device\*\config\SAM'
+            - 'vssadmin delete shadows /for=C:'
+            - 'reg SAVE HKLM\SYSTEM '
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Administrative activity
+level: high
+...
+---
+title: Regsvr32 Anomaly
+status: experimental
+description: Detects various anomalies in relation to regsvr32.exe
+author: Florian Roth
+references:
+    - https://subt0x10.blogspot.de/2017/04/bypass-application-whitelisting-script.html
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    # Loads from Temp folder
+    selection1:
+        EventID: 1
+        Image: '*\regsvr32.exe'
+        CommandLine: '*\Temp\*'
+    # Loaded by powershell
+    selection2:
+        EventID: 1
+        Image: '*\regsvr32.exe'
+        ParentImage: '*\powershell.exe'
+    # Regsvr32.exe used with http(s) address
+    selection3:
+        EventID: 1
+        Image: '*\regsvr32.exe'
+        CommandLine: 
+            - '*/i:http* scrobj.dll'
+            - '*/i:ftp* scrobj.dll'
+    # Regsvr32.exe spawned wscript.exe process - indicator of COM scriptlet
+    # https://www.hybrid-analysis.com/sample/f34da6d84a9663928606894fbc494cd9bf2f03c98cf0c775462802558d3a50ef?environmentId=100
+    selection4:
+        EventID: 1
+        Image: '*\wscript.exe'
+        ParentImage: '*\regsvr32.exe'
+    # https://twitter.com/danielhbohannon/status/974321840385531904
+    selection5:
+        EventID: 1
+        Image: '*\EXCEL.EXE'
+        CommandLine: '*..\..\..\Windows\System32\regsvr32.exe *'
+    condition: 1 of them
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Unknown
+level: high
+
+
+...
+---
+title: Suspicious PowerShell Parameter Substring
+status: experimental
+description: Detects suspicious PowerShell invocation with a parameter substring
+references:
+    - http://www.danielbohannon.com/blog-1/2017/3/12/powershell-execution-argument-obfuscation-how-it-can-make-detection-easier
+author: Florian Roth (rule), Daniel Bohannon (idea)
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    keywords:
+        Image: '*\powershell.exe'
+    substrings:
+        - ' -windowstyle h '
+        - ' -windowstyl h'
+        - ' -windowsty h'
+        - ' -windowst h'
+        - ' -windows h'
+        - ' -windo h'
+        - ' -wind h'
+        - ' -win h'
+        - ' -wi h'
+        - ' -win h '
+        - ' -win hi '
+        - ' -win hid '
+        - ' -win hidd '
+        - ' -win hidde '
+        - ' -NoPr '
+        - ' -NoPro '
+        - ' -NoProf '
+        - ' -NoProfi '
+        - ' -NoProfil ' 
+        - ' -nonin '
+        - ' -nonint '
+        - ' -noninte '
+        - ' -noninter '
+        - ' -nonintera '
+        - ' -noninterac '
+        - ' -noninteract '
+        - ' -noninteracti '
+        - ' -noninteractiv '
+        - ' -ec '
+        - ' -encodedComman '
+        - ' -encodedComma '
+        - ' -encodedComm '
+        - ' -encodedCom '
+        - ' -encodedCo '
+        - ' -encodedC '
+        - ' -encoded '
+        - ' -encode '
+        - ' -encod '
+        - ' -enco '
+        - ' -en '
+    condition: all of them
+falsepositives:
+    - Penetration tests
+level: high
+...
+---
+title: Shells Spawned by Web Servers
+status: experimental
+description: Web servers that spawn shell processes could be the result of a successfully placed web shell or an other attack
+author: Thomas Patzke
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+            - '*\w3wp.exe'
+            - '*\httpd.exe'
+            - '*\nginx.exe'
+            - '*\php-cgi.exe'
+        Image:
+            - '*\cmd.exe'
+            - '*\sh.exe'
+            - '*\bash.exe'
+            - '*\powershell.exe'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Particular web applications may spawn a shell process legitimately
+level: high
+...
+---
+title: Suspicious Certutil Command
+status: experimental
+description: Detetcs a suspicious Microsoft certutil execution with sub commands like 'decode' sub command, which is sometimes used to decode malicious code with the built-in certutil utility
+author:
+    - Florian Roth, juju4
+references:
+    - https://twitter.com/JohnLaTwC/status/835149808817991680
+    - https://twitter.com/subTee/status/888102593838362624
+    - https://twitter.com/subTee/status/888071631528235010
+    - https://blogs.technet.microsoft.com/pki/2006/11/30/basic-crl-checking-with-certutil/
+    - https://www.trustedsec.com/2017/07/new-tool-release-nps_payload/
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine: 
+            - '*\certutil.exe * -decode *'
+            - '*\certutil.exe * -decodehex *'
+            - '*\certutil.exe *-urlcache* http*'
+            - '*\certutil.exe *-urlcache* ftp*'
+            - '*\certutil.exe *-URL*'
+            - '*\certutil.exe *-ping*'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - False positives depend on scripts and administrative tools used in the monitored environment
+level: high
+
+
+...
+---
+title: SquiblyTwo
+status: experimental
+description: Detects WMI SquiblyTwo Attack with possible renamed WMI by looking for imphash
+references:
+    - https://subt0x11.blogspot.ch/2018/04/wmicexe-whitelisting-bypass-hacking.html
+    - https://twitter.com/mattifestation/status/986280382042595328
+author: Markus Neis / Florian Roth
+falsepositives:
+    - Unknown
+level: medium
+logsource:
+   product: windows
+   service: sysmon
+detection:
+    selection1:
+        EventID: 1
+        Image:
+            - '*\wmic.exe'
+        CommandLine:
+            - 'wmic * *format:\"http*'
+            - "wmic * /format:'http"
+            - 'wmic * /format:http*'
+    selection2:
+        EventID: 1
+        Imphash:
+             - '1B1A3F43BF37B5BFE60751F2EE2F326E'
+             - '37777A96245A3C74EB217308F3546F4C'
+             - '9D87C9D67CE724033C0B40CC4CA1B206'
+        CommandLine:
+            - '* *format:\"http*'
+            - "* /format:'http"
+            - '* /format:http*'
+    condition: 1 of them
+...
+---
+title: UAC Bypass via sdclt
+status: experimental
+description: Detects changes to HKCU:\Software\Classes\exefile\shell\runas\command\isolatedCommand
+references:
+    - https://enigma0x3.net/2017/03/17/fileless-uac-bypass-using-sdclt-exe/
+author: Omer Yampel
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 13 
+        TargetObject: 'HKEY_USERS\*\Classes\exefile\shell\runas\command\isolatedCommand'
+    condition: selection
+falsepositives:
+    - unknown
+level: high
+
+...
+---
+title: Mimikatz In-Memory
+status: experimental
+description: Detects certain DLL loads when Mimikatz gets executed
+references:
+    - https://securityriskadvisors.com/blog/post/detecting-in-memory-mimikatz/
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selector:
+        EventID: 7
+        Image: 'C:\Windows\System32\rundll32.exe'
+    dllload1:
+        ImageLoaded: '*\vaultcli.dll'
+    dllload2:
+        ImageLoaded: '*\wlanapi.dll'        
+    exclusion:
+        ImageLoaded:
+            - 'ntdsapi.dll'
+            - 'netapi32.dll'
+            - 'imm32.dll'
+            - 'samlib.dll'
+            - 'combase.dll'
+            - 'srvcli.dll'
+            - 'shcore.dll'
+            - 'ntasn1.dll'
+            - 'cryptdll.dll'
+            - 'logoncli.dll'
+    timeframe: 30s
+    condition: selector | near dllload1 and dllload2 and not exclusion
+falsepositives:
+    - unknown
+level: medium
+...
+---
+title: Suspicious TSCON Start
+status: experimental
+description: Detects a tscon.exe start as LOCAL SYSTEM 
+reference: 
+    - http://www.korznikov.com/2017/03/0-day-or-feature-privilege-escalation.html
+    - https://medium.com/@networksecurity/rdp-hijacking-how-to-hijack-rds-and-remoteapp-sessions-transparently-to-move-through-an-da2a1e73a5f6
+author: Florian Roth
+date: 2018/03/17
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        User: 'NT AUTHORITY\SYSTEM'
+        Image: '*\tscon.exe'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high
+...
+---
+title: Registry Persistence Mechanisms
+description: Detects persistence registry keys 
+references:
+    - https://oddvar.moe/2018/04/10/persistence-using-globalflags-in-image-file-execution-options-hidden-from-autoruns-exe/
+date: 2018/04/11
+author: Karneades
+logsource:
+   product: windows
+   service: sysmon
+detection:
+    selection_reg1:
+        EventID: 13 
+        TargetObject: 
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\*\GlobalFlag'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SilentProcessExit\*\ReportingMode'
+            - '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SilentProcessExit\*\MonitorProcess'
+        EventType: 'SetValue'
+    condition: 1 of them
+falsepositives:
+    - unknown
+level: critical
+...
+---
+title: Rundll32 Internet Connection
+status: experimental
+description: Detects a rundll32 that communicates with piblic IP addresses
+references:
+    - https://www.hybrid-analysis.com/sample/759fb4c0091a78c5ee035715afe3084686a8493f39014aea72dae36869de9ff6?environmentId=100
+author: Florian Roth
+date: 2017/11/04
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 3
+        Image: '*\rundll32.exe'
+    filter:
+        DestinationIp: 
+            - '10.*'
+            - '192.168.*'
+            - '172.*'
+    condition: selection and not filter
+falsepositives:
+    - Communication to other corporate systems that use IP addresses from public address spaces
+level: medium...
+---
+title: PowerShell Network Connections
+status: experimental
+description: "Detetcs a Powershell process that opens network connections - check for suspicious target ports and target systems - adjust to your environment (e.g. extend filters with company's ip range')"  
+author: Florian Roth
+references:
+    - https://www.youtube.com/watch?v=DLtJTxMWZ2o
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 3
+        Image: '*\powershell.exe'
+    filter:
+        DestinationIp: 
+            - '10.*'
+            - '192.168.*'
+            - '172.*'
+            - '127.0.0.1'
+        DestinationIsIpv6: 'false'
+        User: 'NT AUTHORITY\SYSTEM'
+    condition: selection and not filter
+falsepositives:
+    - Administrative scripts
+level: low
+...
+---
+title: Droppers exploiting CVE-2017-11882
+status: experimental
+description: Detects exploits that use CVE-2017-11882 to start EQNEDT32.EXE and other sub processes like mshta.exe
+references:
+    - https://www.hybrid-analysis.com/sample/2a4ae284c76f868fc51d3bb65da8caa6efacb707f265b25c30f34250b76b7507?environmentId=100
+    - https://www.google.com/url?hl=en&q=https://embedi.com/blog/skeleton-closet-ms-office-vulnerability-you-didnt-know-about&source=gmail&ust=1511481120837000&usg=AFQjCNGdL7gVwLXaNSl2Td8ylDYbSJFmPw
+author: Florian Roth
+date: 2017/11/23
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\EQNEDT32.EXE'
+    condition: selection
+fields:
+    - CommandLine
+falsepositives:
+    - unknown
+level: critical
+...
+---
+title: Taskmgr as LOCAL_SYSTEM
+status: experimental
+description: Detects the creation of taskmgr.exe process in context of LOCAL_SYSTEM
+author: Florian Roth
+date: 2018/03/18
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        User: 'NT AUTHORITY\SYSTEM'
+        Image: '*\taskmgr.exe'
+    condition: selection
+falsepositives:
+    - Unkown
+level: high
+...
+---
+title: DHCP Callout DLL installation
+status: experimental
+description: Detects the installation of a Callout DLL via CalloutDlls and CalloutEnabled parameter in Registry, which can be used to execute code in context of the DHCP server (restart required)
+references:
+    - https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html
+    - https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx
+    - https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
+date: 2017/05/15
+author: Dimitrios Slamaris
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 13
+        TargetObject: 
+            - '*\Services\DHCPServer\Parameters\CalloutDlls'
+            - '*\Services\DHCPServer\Parameters\CalloutEnabled'
+    condition: selection
+falsepositives:
+    - unknown
+level: high
+...
+---
+title: UAC Bypass via Event Viewer
+status: experimental
+description: Detects UAC bypass method using Windows event viewer
+references:
+    - https://enigma0x3.net/2016/08/15/fileless-uac-bypass-using-eventvwr-exe-and-registry-hijacking/
+    - https://www.hybrid-analysis.com/sample/e122bc8bf291f15cab182a5d2d27b8db1e7019e4e96bb5cdbd1dfe7446f3f51f?environmentId=100
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    methregistry:
+        EventID: 13
+        TargetObject: 'HKEY_USERS\*\mscfile\shell\open\command'
+    methprocess:
+        EventID: 1
+        ParentImage: '*\eventvwr.exe'
+    filterprocess:
+        Image: '*\mmc.exe'
+    condition: methregistry or ( methprocess and not filterprocess )
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: critical
+
+
+...
+---
+title: Suspicious Control Panel DLL Load
+status: experimental
+description: Detects suspicious Rundll32 execution from control.exe as used by Equation Group and Exploit Kits
+author: Florian Roth
+date: 2017/04/15
+references:
+    - https://twitter.com/rikvduijn/status/853251879320662017
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\System32\control.exe'
+        CommandLine: '*\rundll32.exe *'
+    filter:
+        CommandLine: '*Shell32.dll*'
+    condition: selection and not filter
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Unknown
+level: high
+...
+---
+title: Ping Hex IP
+description: Detects a ping command that uses a hex encoded IP address
+references:
+    - https://github.com/vysec/Aggressor-VYSEC/blob/master/ping.cna
+    - https://twitter.com/vysecurity/status/977198418354491392
+author: Florian Roth
+date: 2018/03/23
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine:
+            - '*\ping.exe 0x*'
+            - '*\ping 0x*'
+    condition: selection
+fields:
+    - ParentCommandLine
+falsepositives:
+    - Unlikely, because no sane admin pings IP addresses in a hexadecimal form
+level: high
+
+...
+---
+title: Executable in ADS
+status: experimental
+description: Detects the creation of an ADS data stream that contains an executable (non-empty imphash)
+references:
+    - https://twitter.com/0xrawsec/status/1002478725605273600?s=21
+author: Florian Roth, @0xrawsec
+date: 2018/06/03
+logsource:
+    product: windows
+    service: sysmon
+    description: 'Requirements: Sysmon config with Imphash logging activated'
+detection:
+    selection:
+        EventID: 15
+    filter:
+        Imphash: '00000000000000000000000000000000'
+    condition: selection and not filter
+fields:
+    - TargetFilename
+    - Image
+falsepositives:
+    - unknown
+level: critical
+
+...
+---
+title: Taskmgr as Parent
+status: experimental
+description: Detects the creation of a process from Windows task manager
+author: Florian Roth
+date: 2018/03/13
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\taskmgr.exe'
+    filter:
+        Image: 
+            - 'resmon.exe'
+            - 'mmc.exe'
+    condition: selection and not filter
+fields:
+    - Image
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Administrative activity
+level: low
+...
+---
+title: Bitsadmin Download
+status: experimental
+description: Detects usage of bitsadmin downloading a file
+references:
+    - https://blog.netspi.com/15-ways-to-download-a-file/#bitsadmin
+    - https://isc.sans.edu/diary/22264
+author: Michael Haag
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\bitsadmin.exe'
+        CommandLine:
+            - '/transfer'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Some legitimate apps use this, but limited.
+level: medium
+...
+---
+title: WSF/JSE/JS/VBA/VBE File Execution
+status: experimental
+description: Detects suspicious file execution by wscript and cscript
+author: Michael Haag
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image:
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+        CommandLine:
+            - '*.jse'
+            - '*.vbe'
+            - '*.js'
+            - '*.vba'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Will need to be tuned. I recommend adding the user profile path in CommandLine if it is getting too noisy.
+level: medium
+...
+---
+title: Executables Started in Suspicious Folder
+status: experimental
+description: Detects process starts of binaries from a suspicious folder
+author: Florian Roth
+date: 2017/10/14
+references:
+   - https://github.com/mbevilacqua/appcompatprocessor/blob/master/AppCompatSearch.txt
+   - https://www.secureworks.com/research/bronze-butler-targets-japanese-businesses
+logsource:
+   product: windows
+   service: sysmon
+detection:
+   selection:
+      EventID: 1
+      Image:
+         - 'C:\PerfLogs\*'
+         - 'C:\$Recycle.bin\*'
+         - 'C:\Intel\Logs\*'
+         - 'C:\Users\Default\*'
+         - 'C:\Users\Public\*'
+         - 'C:\Users\NetworkService\*'
+         - 'C:\Windows\Fonts\*'
+         - 'C:\Windows\Debug\*'
+         - 'C:\Windows\Media\*'
+         - 'C:\Windows\Help\*'
+         - 'C:\Windows\addins\*'
+         - 'C:\Windows\repair\*'
+         - 'C:\Windows\security\*'
+         - '*\RSA\MachineKeys\*'
+         - 'C:\Windows\system32\config\systemprofile\*'
+   condition: selection
+falsepositives:
+    - Unknown
+level: high
+
+...
+---
+title: cmdkey Cached Credentials Recon
+status: experimental
+description: Detects usage of cmdkey to look for cached credentials.
+reference: 
+    - https://www.peew.pw/blog/2017/11/26/exploring-cmdkey-an-edge-case-for-privilege-escalation
+    - https://technet.microsoft.com/en-us/library/cc754243(v=ws.11).aspx
+author: jmallette
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: '*\cmdkey.exe'
+        CommandLine: '* /list *'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+    - User
+falsepositives:
+    - Legitimate administrative tasks.
+level: low
+...
+---
+---
+action: global
+title: Suspicious RDP Redirect Using TSCON
+status: experimental
+description: Detects a suspicious RDP session redirect using tscon.exe
+reference: 
+    - http://www.korznikov.com/2017/03/0-day-or-feature-privilege-escalation.html
+    - https://medium.com/@networksecurity/rdp-hijacking-how-to-hijack-rds-and-remoteapp-sessions-transparently-to-move-through-an-da2a1e73a5f6
+author: Florian Roth
+date: 2018/03/17
+detection:
+    selection:
+        CommandLine: '* /dest:rdp-tcp:*'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high
+---
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+---
+logsource:
+    product: windows
+    service: security
+    description: 'Requirements: Audit Policy : Detailed Tracking > Audit Process creation, Group Policy : Administrative Templates\System\Audit Process Creation'
+detection:
+    selection:
+        EventID: 4688...
+---
+title: Suspicious Typical Malware Back Connect Ports
+status: experimental
+description: Detects programs that connect to typical malware back connetc ports based on statistical analysis from two different sandbox system databases
+references:
+    - https://docs.google.com/spreadsheets/d/17pSTDNpa0sf6pHeRhusvWG6rThciE8CsXTSlDUAZDyo
+author: Florian Roth
+date: 2017/03/19
+logsource:
+    product: windows
+    service: sysmon
+    description: 'Use the following config to generate the necessary Event ID 10 Process Access events: <ProcessAccess onmatch="include"><CallTrace condition="contains">VBE7.DLL</CallTrace></ProcessAccess><ProcessAccess onmatch="exclude"><CallTrace condition="excludes">UNKNOWN</CallTrace></ProcessAccess>'
+detection:
+    selection:
+        EventID: 3
+        DestinationPort:
+            - '4443'
+            - '2448'
+            - '8143'
+            - '1777'
+            - '1443'
+            - '243'
+            - '65535'
+            - '13506'
+            - '3360'
+            - '200'
+            - '198'
+            - '49180'
+            - '13507'
+            - '6625'
+            - '4444'
+            - '4438'
+            - '1904'
+            - '13505'
+            - '13504'
+            - '12102'
+            - '9631'
+            - '5445'
+            - '2443'
+            - '777'
+            - '13394'
+            - '13145'
+            - '12103'
+            - '5552'
+            - '3939'
+            - '3675'
+            - '666'
+            - '473'
+            - '5649'
+            - '4455'
+            - '4433'
+            - '1817'
+            - '100'
+            - '65520'
+            - '1960'
+            - '1515'
+            - '743'
+            - '700'
+            - '14154'
+            - '14103'
+            - '14102'
+            - '12322'
+            - '10101'
+            - '7210'
+            - '4040'
+            - '9943'
+    filter:
+        Image: '*\Program Files*'
+    condition: selection and not filter
+falsepositives:
+    - unknown
+level: medium...
+---
+title: Processes created by MMC 
+status: experimental
+description: Processes started by MMC could by a sign of lateral movement using MMC application COM object 
+references:
+    - https://enigma0x3.net/2017/01/05/lateral-movement-using-the-mmc20-application-com-object/
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\mmc.exe'
+        Image: '*\cmd.exe'
+    exclusion:
+        CommandLine: '*\RunCmd.cmd'
+    condition: selection and not exclusion
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: medium
+...
+---
+title: Microsoft Binary Github Communication
+status: experimental
+description: Detects an executable in the Windows folder accessing github.com
+references:
+    - https://twitter.com/M_haggis/status/900741347035889665
+author: Michael Haag (idea), Florian Roth (rule)
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 3
+        DestinationHostname: '*.github.com'
+        Image: 'C:\Windows\*'
+    condition: selection
+falsepositives:
+    - 'Unknown'
+    - '@subTee in your network'
+level: high
+
+...
+---
+title: Suspicious Svchost Process
+status: experimental
+description: Detects a suspicious scvhost process start 
+author: Florian Roth
+date: 2017/08/15
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: '*\svchost.exe'
+    filter:
+        ParentImage: '*\services.exe'
+    condition: selection and not filter
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Unknown
+level: high
+...
+---
+title: Scheduled Task Creation
+status: experimental
+description: Detects the creation of scheduled tasks in user session 
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        Image: '*\schtasks.exe'
+        CommandLine: '* /create *'
+    filter:
+        User: 'NT AUTHORITY\SYSTEM'
+    condition: selection and not filter
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Administrative activity
+    - Software installation
+level: low
+...
+---
+title: Suspicious Reconnaissance Activity
+status: experimental
+description: Detects suspicious command line activity on Windows systems
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        CommandLine:
+            - 'net group "domain admins" /domain'
+            - 'net localgroup administrators'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Inventory tool runs
+    - Penetration tests
+    - Administrative activity
+analysis:
+    recommendation: Check if the user that executed the commands is suspicious (e.g. service accounts, LOCAL_SYSTEM)
+level: medium
+...
+---
+title: Malware Shellcode in Verclsid Target Process
+status: experimental
+description: Detetcs a process access to verclsid.exe that injects shellcode from a Microsoft Office application / VBA macro
+references:
+    - https://twitter.com/JohnLaTwC/status/837743453039534080
+author: John Lambert (tech), Florian Roth (rule)
+date: 2017/03/04
+logsource:
+    product: windows
+    service: sysmon
+    description: 'Use the following config to generate the necessary Event ID 10 Process Access events: <ProcessAccess onmatch="include"><CallTrace condition="contains">VBE7.DLL</CallTrace></ProcessAccess><ProcessAccess onmatch="exclude"><CallTrace condition="excludes">UNKNOWN</CallTrace></ProcessAccess>'
+detection:
+    selection:
+        EventID: 10
+        TargetImage: '*\verclsid.exe'
+        GrantedAccess: '0x1FFFFF'
+    combination1:
+        CallTrace: '*|UNKNOWN(*VBE7.DLL*'
+    combination2:
+        SourceImage: '*\Microsoft Office\*'
+        CallTrace: '*|UNKNOWN*'
+    condition: selection and 1 of combination*
+falsepositives:
+    - unknown
+level: high
+
+
+...
+---
+title: Microsoft Office Product Spawning Windows Shell
+status: experimental
+description: Detects a Windows command line executable started from Microsoft Word, Excel, Powerpoint, Publisher and Visio.
+references:
+    - https://www.hybrid-analysis.com/sample/465aabe132ccb949e75b8ab9c5bda36d80cf2fd503d52b8bad54e295f28bbc21?environmentId=100
+    - https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+author: Michael Haag, Florian Roth
+date: 2018/04/06
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+            - '*\WINWORD.EXE'
+            - '*\EXCEL.EXE'
+            - '*\POWERPNT.exe'
+            - '*\MSPUB.exe'
+            - '*\VISIO.exe'
+            - '*\OUTLOOK.EXE'
+        Image:
+            - '*\cmd.exe'
+            - '*\powershell.exe'
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+            - '*\sh.exe'
+            - '*\bash.exe'
+            - '*\scrcons.exe'
+            - '*\schtasks.exe'  # see https://www.hybrid-analysis.com/sample/b409538c99f99b94a5035d9fa44a506b41be0feb23e89b7e4d272ba791aa6002?environmentId=100
+            - '*\regsvr32.exe'  # see https://twitter.com/subTee/status/899283365647458305
+            - '*\hh.exe'  # see https://www.hybrid-analysis.com/sample/6abc2b63f1865a847ff7f5a9d49bb944397b36f5503b9718d6f91f93d60f7cd7?environmentId=100
+            - '*\wmic.exe'  # see https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+            - '*\mshta.exe'  # see https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+            - '*\rundll32.exe'  # see https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+            - '*\msiexec.exe'  # see https://twitter.com/DissectMalware/status/984252467474026497
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: high
+
+...
+---
+title: Mimikatz Detection LSASS Access
+status: experimental
+description: Detects process access to LSASS which is typical for Mimikatz (0x1000 PROCESS_QUERY_ LIMITED_INFORMATION, 0x0400 PROCESS_QUERY_ INFORMATION, 0x0010 PROCESS_VM_READ)
+references:
+    - https://onedrive.live.com/view.aspx?resid=D026B4699190F1E6!2843&ithint=file%2cpptx&app=PowerPoint&authkey=!AMvCRTKB_V1J5ow
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 10
+        TargetImage: 'C:\windows\system32\lsass.exe'
+        GrantedAccess: '0x1410'
+    condition: selection
+falsepositives:
+    - unknown
+level: high
+...
+---
+title: Webshell Detection With Command Line Keywords
+description: Detects certain command line parameters often used during reconnissaince activity via web shells
+author: Florian Roth
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+          - '*\apache*'
+          - '*\tomcat*'
+          - '*\w3wp.exe'
+          - '*\php-cgi.exe'
+          - '*\nginx.exe'
+          - '*\httpd.exe'
+        CommandLine:
+          - 'whoami'
+          - 'net user'
+          - 'ping -n'
+          - 'systeminfo'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - unknown
+level: high
+...
+---
+title: Microsoft Outlook Spawning Windows Shell
+status: experimental
+description: Detects a Windows command line executable started from Microsoft Outlook
+references:
+    - https://www2.cybereason.com/asset/60:research-cobalt-kitty-attack-lifecycle
+author: Florian Roth
+date: 2018/03/06
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+            - '*\OUTLOOK.EXE'
+        Image:
+            - '*\cmd.exe'
+            - '*\powershell.exe'
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+            - '*\sh.exe'
+            - '*\bash.exe'
+            - '*\schtasks.exe'
+    condition: selection
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - False positives are possible, depends on organisation and processes
+level: high
+
+...
+---
+title: Malicious Named Pipe
+status: experimental
+description: Detects the creation of a named pipe used by known APT malware
+references:
+    - Various sources
+date: 2017/11/06
+author: Florian Roth
+logsource:
+   product: windows
+   service: sysmon
+   description: 'Note that you have to configure logging for PipeEvents in Symson config'
+detection:
+   selection:
+      EventID: 
+         - 17
+         - 18
+      PipeName: 
+         - '\isapi_http'  # Uroburos Malware Named Pipe
+         - '\isapi_dg'  # Uroburos Malware Named Pipe
+         - '\isapi_dg2'  # Uroburos Malware Named Pipe
+         - '\sdlrpc'  # Cobra Trojan Named Pipe http://goo.gl/8rOZUX
+         - '\ahexec'  # Sofacy group malware
+         - '\winsession'  # Wild Neutron APT malware https://goo.gl/pivRZJ
+         - '\lsassw'  # Wild Neutron APT malware https://goo.gl/pivRZJ
+         - '\46a676ab7f179e511e30dd2dc41bd388'  # Project Sauron https://goo.gl/eFoP4A
+         - '\9f81f59bc58452127884ce513865ed20'  # Project Sauron https://goo.gl/eFoP4A
+         - '\e710f28d59aa529d6792ca6ff0ca1b34'  # Project Sauron https://goo.gl/eFoP4A
+         - '\rpchlp_3'  # Project Sauron https://goo.gl/eFoP4A - Technical Analysis Input
+         - '\NamePipe_MoreWindows'  # Cloud Hopper Annex B https://www.pwc.co.uk/cyber-security/pdf/cloud-hopper-annex-b-final.pdf
+         - '\pcheap_reuse'  # Pipe used by Equation Group malware 77486bb828dba77099785feda0ca1d4f33ad0d39b672190079c508b3feb21fb0
+         - '\NamePipe_MoreWindows'  # US-CERT Alert - RedLeaves https://www.us-cert.gov/ncas/alerts/TA17-117A
+   condition: selection
+falsepositives:
+   - Unkown
+level: critical
+...
+---
+title: Exploit for CVE-2015-1641
+status: experimental
+description: Detects Winword starting uncommon sub process MicroScMgmt.exe as used in exploits for CVE-2015-1641
+references:
+  - https://www.virustotal.com/en/file/5567408950b744c4e846ba8ae726883cb15268a539f3bb21758a466e47021ae8/analysis/
+  - https://www.hybrid-analysis.com/sample/5567408950b744c4e846ba8ae726883cb15268a539f3bb21758a466e47021ae8?environmentId=100
+author: Florian Roth
+date: 2018/02/22
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage: '*\WINWORD.EXE'
+        Image: '*\MicroScMgmt.exe '
+    condition: selection
+falsepositives:
+    - Unknown
+level: critical
+...
+---
+title: WMI Persistence - Command Line Event Consumer
+status: experimental
+description: Detects WMI command line event consumers
+references:
+    - https://www.eideon.com/2018-03-02-THL03-WMIBackdoors/
+author: Thomas Patzke
+date: 2018/03/07
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 7
+        Image: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+        ImageLoaded: 'wbemcons.dll'
+    condition: selection
+falsepositives: 
+    - Unknown (data set is too small; further testing needed)
+level: high
+...
+---
+title: Suspicious PowerShell Invocation based on Parent Process
+status: experimental
+description: Detects suspicious powershell invocations from interpreters or unusual programs
+author: Florian Roth
+references:
+    - https://www.carbonblack.com/2017/03/15/attackers-leverage-excel-powershell-dns-latest-non-malware-attack/
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage:
+            - '*\wscript.exe'
+            - '*\cscript.exe'
+        Image:
+            - '*\powershell.exe'
+    falsepositive:
+        CurrentDirectory: '*\Health Service State\*'
+    condition: selection and not falsepositive
+fields:
+    - CommandLine
+    - ParentCommandLine
+falsepositives:
+    - Microsoft Operations Manager (MOM)
+    - Other scripts
+level: medium
+...
