@@ -1,7 +1,7 @@
 # BeachComber
-=====================
 
-# What is BeachComber
+
+# What is BeachComber?
 
 BeachComber is an analytic automation tool which compares file behavior logs against malicious behavior signatures in SIGMA format and generates a report outlining the anomalous or malicious behaviors found in the file. BeachComber uses a generic signature format called SIGMA and can therefore be used to incorporate more analytics into AssemblyLine by adding signatures from different log sources. The main purpose of this project is to further enrich analytics in the binary analysis tool and to incorporate more services and analytics into the dynamic analysis.
 
