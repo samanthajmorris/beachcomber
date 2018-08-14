@@ -1,0 +1,8 @@
+[sources]
+logfile = /home/cuckoo/Documents/event_json.json
+indicatorfile = /home/cuckoo/Documents/bigfile_json.json
+indicator_dir = /home/cuckoo/sigma/rules/windows/sysmon
+config_folder = /home/cuckoo/Downloads/project-tpbranch/config
+alert_document = /home/cuckoo/Downloads/project-tpbranch/config/alerts_generated.txt
+event_log = /home/cuckoo/.cuckoo/storage/analyses/86/supplementary/sysmonout.xml
+eventlog_empty = /home/cuckoo/Downloads/project-tpbranch/config/event_json.json
