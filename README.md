@@ -1,4 +1,5 @@
-# beachComber
+# BeachComber
+=====================
 
 # What is BeachComber
 
@@ -149,7 +150,7 @@ rest: //any
 ```
 
 ## Components:
-### Title
+### Title:
 A brief title for the rule that should contain what the rules is supposed to detect (max. 256 characters)
 Status (optional)
 Declares the status of the rule:
@@ -157,16 +158,16 @@ Declares the status of the rule:
 •	test: an almost stable rule that possibly could require some fine tuning.
 •	experimental: an experimental rule that could lead to false results or be noisy, but could also identify interesting events.
 
-### Description (optional)
+### Description (optional):
 A short description of the rule and the malicious activity that can be detected (max. 65,535 characters)
 
-### Author (optional)
+### Author (optional):
 Creator of the rule.
 
-### References (optional)
+### References (optional):
 References to the source that the rule was derived from. These could be blog articles, technical papers, presentations or even tweets.
 
-### Log Source (optional for BeachComber)
+### Log Source (optional for BeachComber):
 This section describes the log data on which the detection is meant to be applied to. It describes the log source, the platform, the application and the type that is required in detection.
 It consists of three attributes that are evaluated automatically by the converters and an arbitrary number of optional elements. We recommend using a "definition" value in cases in which further explication is necessary.
 •	category - examples: firewall, web, antivirus
@@ -184,9 +185,10 @@ product: windows
 ```
 Instead of definition of multiple rules for Sysmon, Windows Security Auditing and possible product-specific rules.
 
-### Detection
+### Detection:
 A set of search-identifiers that represent searches on log data
-Search-Identifier
+
+#### Search-Identifier:
 A definition that can consist of two different data structures - lists and maps.
 General
 •	All values are treated as case-insensitive strings
@@ -194,7 +196,7 @@ General
 •	Regular expressions are case-sensitive by default
 •	You don't have to escape characters except the string quotation marks '
 
-### Lists
+#### Lists:
 The lists contain strings that are applied to the full log message and are linked with a logical 'OR'.
 Example: Matches on 'EvilService' or 'svchost.exe -n evil'
 ```
@@ -204,7 +206,7 @@ detection:
     - svchost.exe -n evil
 ```
 
-### Maps
+#### Maps
 Maps (or dictionaries) consist of key/value pairs, in which the key is a field in the log data and the value a string or integer value. Lists of maps are joined with a logical 'OR'. All elements of a map are joined with a logical 'AND'.
 Examples:
 Matches on Eventlog 'Security' and ( Event ID 517 or Event ID 1102 )
@@ -228,7 +230,7 @@ detection:
 condition: selection
 ```
 
-### Special Field Values
+#### Special Field Values
 There are special field values that can be used.
 •	An empty value is defined with ''
 •	A null value is defined with null
@@ -246,7 +248,7 @@ condition:
    selection and not filter
 ```
 
-### TimeFrame
+#### TimeFrame
 A relative time frame definition using the typical abbreviations for day, hour, minute, second.
 Examples:
 ```
@@ -259,25 +261,25 @@ Examples:
 The time frame is defined in the timeframe attribute of the detection section.
 Note: The time frame is often a manual setting that has to be defined within the SIEM system and is not part of the generated query.
 
-### Condition
+### Condition:
 The condition is the most complex part of the specification and will be subject to change over time and arising requirements. In the first release it will support the following expressions.
 
-•	Logical AND/OR
+#### Logical AND/OR
 ```
 keywords1 or keywords2
 ```
 
-•	1/all of search-identifier
+#### 1/all of search-identifier
 Same as just 'keywords' if keywords are defined in a list. X may be:
 o	1 (logical or across alternatives)
 o	all (logical and across alternatives)
 Example: ```all of keywords``` means that all items of the list keywords must appear, instead of the default behaviour of any of the listed items.
 
-•	1/all of them
+#### 1/all of them
 Logical OR ```(1 of them)``` or AND ```(all of them)``` across all defined search identifiers. The search identifiers themselves are logically linked with their default behaviour for maps (AND) and lists (OR).
 Example: ```1 of them means``` that one of the defined search identifiers must appear.
 
-•	1/all of search-identifier-pattern
+#### 1/all of search-identifier-pattern
 Same as 1/all of them, but restricted to matching search identifiers. Matching is done with * wildcards (any number of characters) at arbitrary positions in the pattern.
 Examples:
 ```
@@ -285,24 +287,24 @@ o	1 of selection* and keywords
 o	any of selection* and not filters
 ```
 
-•	Negation with 'not'
+#### Negation with 'not'
 ```
 keywords and not filters
 ```
 
-•	Pipe
+#### Pipe
 ```
 search_expression | aggregation_expression
 ```
 A pipe indicates that the result of search_expression is aggregated by aggregation_expression and possibly compared with a value
 The first expression must be a search expression that is followed by an aggregation expression with a condition.
 
-•	Brackets
+#### Brackets
 ```
 selection1 and (keywords1 or keywords2)
 ```
 
-•	Aggregation expression
+#### Aggregation expression
 agg-function(agg-field) [ by group-field ] comparison-op value
 agg-function may be:
 o	count
@@ -314,7 +316,7 @@ All aggregation functions except count require a field name as parameter. The co
 Example: ```count(UserName) by SourceWorkstation > 3```
 This comparison counts distinct user names grouped by SourceWorkstations.
 
-•	Near aggregation expression
+#### Near aggregation expression
 near search-id-1 [ [ and search-id-2 | and not search-id-3 ] ... ]
 This expression generates (if supported by the target system and backend) a query that recognizes search_expression (primary event) if the given conditions are or are not in the temporal context of the primary event within the given time frame.
 
@@ -328,20 +330,20 @@ Operator Precedence (least to most binding)
 
 If multiple conditions are given, they are logically linked with OR.
 
-###Fields (optional for BeachComber)
+### Fields (optional for BeachComber):
 A list of log fields that could be interesting in further analysis of the event and should be displayed to the analyst.
 
-###FalsePositives (optional for BeachComber)
+### FalsePositives (optional for BeachComber):
 A list of known false positives that may occur.
 
-###Level (optional for BeachComber)
+### Level (optional for BeachComber):
 The level contains one of four string values. It serves as a guideline for using the signature and a way to deliver matching events.
      •	low : Interesting event but less likely that it's actually an incident. A security analyst has to review the events and spot anomalies or suspicious indicators. Use this in a dashboard panel, maybe in form of a chart.
      •	medium : Relevant event that should be reviewed manually on a more frequent basis. A security analyst has to review the events and spot anomalies or suspicious indicators. List the events in a dashboard panel for manual review.
      •	high : Relevant event that should trigger an internal alert and has to be reviewed as quickly as possible.
      •	critical : Highly relevant event that triggers an internal alert and causes external notifications (eMail, SMS, ticket). Events are clear matches with no known false positives.
      
-### Tags (optional for BeachComber)
+### Tags (optional for BeachComber):
 A Sigma rule can be categorised with tags. Tags should generally follow this syntax:
      •	Character set: lower-case letters, underscores and hyphens
      •	no spaces
@@ -349,7 +351,7 @@ A Sigma rule can be categorised with tags. Tags should generally follow this syn
      •	Keep tags short, e.g. numeric identifiers instead of long sentences
      •	If applicable, use predefined tags. Feel free to send pull request or issues with proposals for new tags
      
-### Placeholders (optional for BeachComber)
+### Placeholders (optional for BeachComber):
 Placeholders can be used to select a set of elements that can be expanded during conversion. Placeholders map a an identifier to a user defined value that can be set in config files for an automatic replacement during conversion runs. Placeholders are meaningful identifiers that users can easily expand themselves.
 Examples for placeholders
      •	```%Administrators%``` - Administrative user accounts
