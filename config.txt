@@ -1,6 +1,6 @@
 [sources]
 indicator_dir = /home/cuckoo/sigma/rules/windows/sysmon
-config_folder = /home/cuckoo/Downloads/project-tpbranch/config
-alert_document = /home/cuckoo/Downloads/project-tpbranch/config/alerts_generated.txt
+config_folder = /home/cuckoo/Downloads/beachComber/config
+alert_document = /home/cuckoo/Downloads/beachComber/config/alerts_generated.txt
 event_log = /home/cuckoo/.cuckoo/storage/analyses/85/supplementary/sysmonout.xml
-eventlog_empty = /home/cuckoo/Downloads/project-tpbranch/config/event_json.json
+eventlog_empty = /home/cuckoo/Downloads/beachComber/config/event_json.json
