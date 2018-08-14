@@ -37,7 +37,7 @@ Sigma is a generic and open signature format that allows you to describe relevan
 
 Note: For BeachComber, only the title and detection section is required. BeachComber does not yet have the logic to identify different log sources, therefore it will not identify if you are running Sysmon SIGAM signatures against a log that is not a Sysmon event log.
 
-**BeachComber currently is not compatible with the indicator "Suspicious RDP Redirecft Using TSCON" due the formatting, the program cannot find a condition section. Also not compatible for indicators "Executable used by PlugX in Uncommon Location" and "Mimikatz In-Memory" due to complicated conditions which the logic has not been worked out.
+**BeachComber currently is not compatible with the indicator "Suspicious RDP Redirecft Using TSCON" due the formatting, the program cannot find a condition section. Also not compatible for indicators "Executable used by PlugX in Uncommon Location" and "Mimikatz In-Memory" due to complicated conditions which the logic has not been worked out.**
 
 The rules consist of a few required sections and several optional ones.
 
