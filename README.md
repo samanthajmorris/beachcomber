@@ -190,7 +190,7 @@ Instead of definition of multiple rules for Sysmon, Windows Security Auditing an
 ### Detection:
 A set of search-identifiers that represent searches on log data
 
-#### Search-Identifier:
+#### Search-Identifier
 A definition that can consist of two different data structures - lists and maps.
 General
 •	All values are treated as case-insensitive strings
@@ -198,7 +198,7 @@ General
 •	Regular expressions are case-sensitive by default
 •	You don't have to escape characters except the string quotation marks '
 
-#### Lists:
+#### Lists
 The lists contain strings that are applied to the full log message and are linked with a logical 'OR'.
 Example: Matches on 'EvilService' or 'svchost.exe -n evil'
 ```
