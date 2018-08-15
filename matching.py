@@ -2,10 +2,6 @@ from signatures import *
 import fnmatch
 
 
-# import sys
-# import collections
-
-
 def find_matches(event, indi):
     """
     Matches the items in the indicator to the event... Iterates through the sections and if theres a list it iterates
