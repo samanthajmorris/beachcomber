@@ -18,28 +18,10 @@ def import_log(origin, new_log):
         with open(origin, "r", encoding='utf-8', errors='ignore') as fp, open(new_log, 'w') as event_json:
             doc = xmltodict.parse(fp.read())
             event_json.write(unicode(json.dumps(doc, ensure_ascii=False)))
-    #	print "done"
-    #		log = log_to_json(event_json)
-    #		return log
-    #	print "done"
-    #	with open(new_log) as x:
-    #	log = json.load(new_log)
-    #	print "done again"
-    #	return log
     except ExpatError:
         print "Error: Format error in the Log"
         sys.exit(1)
-
-
-# def log_to_json(f):
-# try:
-#	log = json.load(f)
-#	return log
-# except:
-#	print "Error in event log json file. Try removing the event_json.json."
-#	sys.exit(1)
-
-
+        
 
 def flattened(event):
     """
