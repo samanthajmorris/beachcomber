@@ -72,7 +72,7 @@ def get_condition(ind_info, name):
     try:
         return ind_info['detection']['condition']
     except KeyError:
-        print "Error: No Condition Found: " + str(name)
+        #print "Error: No Condition Found: " + str(name)
         return "none"
 
 
