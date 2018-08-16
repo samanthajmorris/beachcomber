@@ -6,11 +6,11 @@
 BeachComber is an analytic automation tool which compares file behavior logs against malicious behavior signatures in SIGMA format and generates a report outlining the anomalous of malicious behaviors indicated in the behavior log. BeachComber the SIGMA generic signature format and can therefore be used to incorporate more analytics into AssemblyLine by adding signatures from different log sources. The main purpose of this project is to further enrich analytics in the binary analysis tool and to incorporate more services and analytics into the dynamic analysis.
 
 This repository contains:
-o	-SIGMA rule specification in this document
+	-SIGMA rule specification in this document
 
-o	-Repository for sigma signatures in the sysmon-rules subfolder
+	-Repository for sigma signatures in the sysmon-rules subfolder
 
-o	-A tool which checks xml logs against the SIGMA rules
+	-A tool which checks xml logs against the SIGMA rules
 
 
 # Getting Started
