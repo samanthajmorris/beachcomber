@@ -7,9 +7,7 @@ BeachComber is an analytic automation tool which compares file behavior logs aga
 
 This repository contains:
 	-SIGMA rule specification in this document
-
 	-Repository for sigma signatures in the sysmon-rules subfolder
-
 	-A tool which checks xml logs against the SIGMA rules
 
 
